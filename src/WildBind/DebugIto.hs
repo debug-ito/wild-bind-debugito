@@ -8,8 +8,11 @@ module WildBind.DebugIto
          push,
          pushes,
          cmd',
-         -- * Simple Bindings
+         -- * Simple Binding
          base,
+         -- * GIMP
+         GimpConfig(..),
+         defGimpConfig,
          gimp
        ) where
 
@@ -44,14 +47,22 @@ base :: Binding s NumPadUnlocked
 base = binds $ do
   on NumCenter `as` "Enter" `run` push "Return"
 
-gimp :: Binding ActiveWindow NumPadUnlocked
-gimp = whenFront (\w -> "Gimp" `isInfixOf` winClass w) $ binds $ do
+
+data GimpConfig = GimpConfig { gimpSwapColor :: String
+                             } deriving (Show,Eq,Ord)
+
+defGimpConfig :: GimpConfig
+defGimpConfig = GimpConfig { gimpSwapColor = "F12" }
+
+-- | Binding for GIMP.
+gimp :: GimpConfig -> Binding ActiveWindow NumPadUnlocked
+gimp conf = whenFront (\w -> "Gimp" `isInfixOf` winClass w) $ binds $ do
   on NumCenter `as` "ペン" `run` push "p"
   on NumDelete `as` "鉛筆" `run` push "n"
   on NumLeft `as` "スポイト" `run` push "o"
   on NumRight `as` "消しゴム" `run` push "Shift+e"
   on NumHome `as` "矩形選択" `run` push "r"
-  on NumUp `as` "色スワップ" `run` push "F12"
+  on NumUp `as` "色スワップ" `run` (push $ gimpSwapColor conf)
   on NumPageUp `as` "パス" `run` push "b"
   on NumEnd `as` "やり直し" `run` push "Ctrl+z"
   on NumDown `as` "縮小" `run` push "minus"
