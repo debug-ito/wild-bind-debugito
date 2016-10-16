@@ -10,6 +10,14 @@ module WildBind.DebugIto
          cmd',
          -- * Simple Binding
          base,
+         -- * Global
+         GlobalConfig(..),
+         global,
+         -- * Video players
+         VideoPlayerConfig(..),
+         videoPlayer,
+         totemConfig,
+         vlcConfig,
          -- * GIMP
          GimpConfig(..),
          defGimpConfig,
@@ -18,6 +26,7 @@ module WildBind.DebugIto
 
 import Control.Monad (void)
 import Control.Monad.IO.Class (MonadIO(liftIO))
+import Data.Monoid ((<>))
 import Data.Text (isInfixOf)
 import System.Process (callCommand, spawnCommand)
 import WildBind.Input.NumPad (NumPadUnlocked(..))
@@ -26,7 +35,7 @@ import WildBind.Binding
     binds, on, as, run,
     whenFront
   )
-import WildBind.X11 (winClass, ActiveWindow)
+import WildBind.X11 (winClass, winInstance, ActiveWindow)
 
 
 -- | Push a key
@@ -38,7 +47,7 @@ pushes :: MonadIO m => [String] -> m ()
 pushes [] = return ()
 pushes (k:rest) = push k >> pushes rest
 
--- | Run a comman in background.
+-- | Run a command in background.
 cmd' :: MonadIO m => String -> m ()
 cmd' = liftIO . void . spawnCommand
 
@@ -48,11 +57,77 @@ base = binds $ do
   on NumCenter `as` "Enter" `run` push "Return"
 
 
-data GimpConfig = GimpConfig { gimpSwapColor :: String
-                             } deriving (Show,Eq,Ord)
+data GlobalConfig = GlobalConfig { globalMaximize :: IO (),
+                                   globalMenu :: IO ()
+                                 }
+
+-- | Binding that should be globally active
+global :: GlobalConfig -> Binding ActiveWindow NumPadUnlocked
+global conf = global_nostate <> global_non_switcher where
+  global_nostate = binds $ do
+    on NumMinus `as` "Close" `run` push "Alt+F4"
+    on NumPlus `as` "Maximize" `run` globalMaximize conf
+    on NumMulti `as` "Menu" `run` globalMenu conf
+  global_non_switcher = whenFront (\w -> winInstance w /= "boring-window-switcher") $ binds $ do
+    on NumEnter `as` "Switch" `run` cmd' "boring-window-switcher"
+
+
+data VideoPlayerConfig =
+  VideoPlayerConfig
+  { vpPlayPause, vpVolumeUp, vpVolumeDown,
+    vpBackNormal, vpForwardNormal,
+    vpBackBig, vpForwardBig,
+    vpBackSmall, vpForwardSmall,
+    vpToggleFull :: IO ()
+  }
+
+videoPlayer :: VideoPlayerConfig -> Binding s NumPadUnlocked
+videoPlayer v = binds $ do
+  on NumHome `as` "Back (L)" `run` (vpBackBig v)
+  on NumUp `as` "Vol up" `run` (vpVolumeUp v)
+  on NumPageUp `as` "Forward (L)" `run` (vpForwardBig v)
+  on NumLeft `as` "Back (M)" `run` (vpBackNormal v)
+  on NumCenter `as` "Play/Pause" `run` (vpPlayPause v)
+  on NumRight `as` "Forward (M)" `run` (vpForwardNormal v)
+  on NumEnd `as` "Back (S)" `run` (vpBackSmall v)
+  on NumDown `as` "Vol down" `run` (vpVolumeDown v)
+  on NumPageDown `as` "Forward (S)" `run` (vpForwardSmall v)
+  on NumInsert `as` "Toggle Full Screen" `run` (vpToggleFull v)
+
+totemConfig :: VideoPlayerConfig
+totemConfig = VideoPlayerConfig
+              { vpPlayPause = push "p",
+                vpVolumeUp = push "Up",
+                vpVolumeDown = push "Down",
+                vpBackNormal = push "Left",
+                vpForwardNormal = push "Right",
+                vpBackBig = push "Control+Left",
+                vpForwardBig = push "Control+Right",
+                vpBackSmall = push "Shift+Left",
+                vpForwardSmall = push "Shift+Right",
+                vpToggleFull = push "f"
+              }
+
+vlcConfig :: VideoPlayerConfig
+vlcConfig = VideoPlayerConfig
+            { vpPlayPause = push "space",
+              vpVolumeUp = push "Ctrl+Up",
+              vpVolumeDown = push "Ctrl+Down",
+              vpBackNormal = push "Alt+Left",
+              vpForwardNormal = push "Alt+Right",
+              vpBackBig = push "Ctrl+Left",
+              vpForwardBig = push "Ctrl+Right",
+              vpBackSmall = push "Shift+Left",
+              vpForwardSmall = push "Shift+Right",
+              vpToggleFull = push "f"
+            }
+
+
+data GimpConfig = GimpConfig { gimpSwapColor :: IO ()
+                             }
 
 defGimpConfig :: GimpConfig
-defGimpConfig = GimpConfig { gimpSwapColor = "F12" }
+defGimpConfig = GimpConfig { gimpSwapColor = push "F12" }
 
 -- | Binding for GIMP.
 gimp :: GimpConfig -> Binding ActiveWindow NumPadUnlocked
@@ -62,7 +137,7 @@ gimp conf = whenFront (\w -> "Gimp" `isInfixOf` winClass w) $ binds $ do
   on NumLeft `as` "スポイト" `run` push "o"
   on NumRight `as` "消しゴム" `run` push "Shift+e"
   on NumHome `as` "矩形選択" `run` push "r"
-  on NumUp `as` "色スワップ" `run` (push $ gimpSwapColor conf)
+  on NumUp `as` "色スワップ" `run` gimpSwapColor conf
   on NumPageUp `as` "パス" `run` push "b"
   on NumEnd `as` "やり直し" `run` push "Ctrl+z"
   on NumDown `as` "縮小" `run` push "minus"
