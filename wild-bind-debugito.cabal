@@ -4,14 +4,14 @@ author:                 Toshio Ito <debug.ito@gmail.com>
 maintainer:             Toshio Ito <debug.ito@gmail.com>
 license:                BSD3
 license-file:           LICENSE
--- synopsis:               
--- description:            
--- category:               
+synopsis:               debugito's WildBind Bindings
+description:            debugito's WildBind Bindings
+category:               WildBind
 cabal-version:          >= 1.10
 build-type:             Simple
 extra-source-files:     README.md, ChangeLog.md
--- homepage:               
--- bug-reports:            
+homepage:               https://github.com/debug-ito/wild-bind-debugito
+bug-reports:            https://github.com/debug-ito/wild-bind-debugito/issues
 
 library
   default-language:     Haskell2010
@@ -47,4 +47,4 @@ test-suite spec
 
 source-repository head
   type:                 git
---  location:             
+  location:             https://github.com/debug-ito/wild-bind-debugito.git

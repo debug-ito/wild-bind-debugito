@@ -1,5 +1,7 @@
 # wild-bind-debugito
 
+My personal Bindings for [WildBind](https://github.com/debug-ito/wild-bind).
+
 
 ## Author
 
