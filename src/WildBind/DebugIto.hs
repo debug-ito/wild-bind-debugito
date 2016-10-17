@@ -17,8 +17,8 @@ module WildBind.DebugIto
          VideoPlayerConfig(..),
          videoPlayer,
          dvdPlayer,
-         totemConfig,
-         vlcConfig,
+         forTotem,
+         forVLC,
          -- * GIMP
          GimpConfig(..),
          defGimpConfig,
@@ -29,7 +29,7 @@ import Control.Monad (void)
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import qualified Control.Monad.Trans.State as State
 import Data.Monoid ((<>))
-import Data.Text (isInfixOf)
+import Data.Text (isInfixOf, isSuffixOf)
 import System.Process (callCommand, spawnCommand)
 import WildBind.Input.NumPad (NumPadUnlocked(..))
 import WildBind.Binding
@@ -101,8 +101,9 @@ videoPlayer v = binds $ do
 
 data PlayerMode = NormalPlayer | DVDPlayer deriving (Show, Eq, Ord)
 
-dvdPlayer :: VideoPlayerConfig -> Binding s NumPadUnlocked
-dvdPlayer conf = startFrom DVDPlayer $ ifBack (== NormalPlayer) normal_mode dvd_mode where
+dvdPlayer :: VideoPlayerConfig -> Binding ActiveWindow NumPadUnlocked
+dvdPlayer conf = frontCondition $ startFrom DVDPlayer $ ifBack (== NormalPlayer) normal_mode dvd_mode where
+  frontCondition = whenFront $ \w -> "_DVD" `isSuffixOf` winClass w
   normal_mode = extend (videoPlayer conf)
                 <> ( binds' $ do
                         on NumDelete `as` "DVD Mode" `run` State.put DVDPlayer
@@ -111,35 +112,37 @@ dvdPlayer conf = startFrom DVDPlayer $ ifBack (== NormalPlayer) normal_mode dvd_
     on NumDelete `as` "Normal Mode" `run` State.put NormalPlayer
     on NumPageDown `as` "Toggle Menu" `run` (liftIO $ vpToggleDVDMenu conf)
 
-totemConfig :: VideoPlayerConfig
-totemConfig = VideoPlayerConfig
-              { vpPlayPause = push "p",
-                vpVolumeUp = push "Up",
-                vpVolumeDown = push "Down",
-                vpBackNormal = push "Left",
-                vpForwardNormal = push "Right",
-                vpBackBig = push "Control+Left",
-                vpForwardBig = push "Control+Right",
-                vpBackSmall = push "Shift+Left",
-                vpForwardSmall = push "Shift+Right",
-                vpToggleFull = push "f",
-                vpToggleDVDMenu = push "m"
-              }
+forTotem :: (VideoPlayerConfig -> Binding ActiveWindow i) -> Binding ActiveWindow i
+forTotem maker = whenFront (\w -> winInstance w == "totem") $ maker conf where
+  conf = VideoPlayerConfig
+         { vpPlayPause = push "p",
+           vpVolumeUp = push "Up",
+           vpVolumeDown = push "Down",
+           vpBackNormal = push "Left",
+           vpForwardNormal = push "Right",
+           vpBackBig = push "Control+Left",
+           vpForwardBig = push "Control+Right",
+           vpBackSmall = push "Shift+Left",
+           vpForwardSmall = push "Shift+Right",
+           vpToggleFull = push "f",
+           vpToggleDVDMenu = push "m"
+         }
 
-vlcConfig :: VideoPlayerConfig
-vlcConfig = VideoPlayerConfig
-            { vpPlayPause = push "space",
-              vpVolumeUp = push "Ctrl+Up",
-              vpVolumeDown = push "Ctrl+Down",
-              vpBackNormal = push "Alt+Left",
-              vpForwardNormal = push "Alt+Right",
-              vpBackBig = push "Ctrl+Left",
-              vpForwardBig = push "Ctrl+Right",
-              vpBackSmall = push "Shift+Left",
-              vpForwardSmall = push "Shift+Right",
-              vpToggleFull = push "f",
-              vpToggleDVDMenu = push "Shift+m"
-            }
+forVLC :: (VideoPlayerConfig -> Binding ActiveWindow i) -> Binding ActiveWindow i
+forVLC maker = whenFront (\w -> winInstance w == "vlc") $ maker conf where
+  conf = VideoPlayerConfig
+         { vpPlayPause = push "space",
+           vpVolumeUp = push "Ctrl+Up",
+           vpVolumeDown = push "Ctrl+Down",
+           vpBackNormal = push "Alt+Left",
+           vpForwardNormal = push "Alt+Right",
+           vpBackBig = push "Ctrl+Left",
+           vpForwardBig = push "Ctrl+Right",
+           vpBackSmall = push "Shift+Left",
+           vpForwardSmall = push "Shift+Right",
+           vpToggleFull = push "f",
+           vpToggleDVDMenu = push "Shift+m"
+         }
 
 
 data GimpConfig = GimpConfig { gimpSwapColor :: IO ()
