@@ -19,6 +19,9 @@ module WildBind.DebugIto
          dvdPlayer,
          forTotem,
          forVLC,
+         -- * Thunar
+         thunar,
+         thunarMenu,
          -- * GIMP
          GimpConfig(..),
          defGimpConfig,
@@ -29,7 +32,7 @@ import Control.Monad (void)
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import qualified Control.Monad.Trans.State as State
 import Data.Monoid ((<>))
-import Data.Text (isInfixOf, isSuffixOf)
+import Data.Text (Text, isInfixOf, isSuffixOf, unpack)
 import System.Process (callCommand, spawnCommand)
 import WildBind.Input.NumPad (NumPadUnlocked(..))
 import WildBind.Binding
@@ -38,7 +41,7 @@ import WildBind.Binding
     whenFront,
     startFrom, ifBack, binds', extend
   )
-import WildBind.X11 (winClass, winInstance, ActiveWindow)
+import WildBind.X11 (winClass, winInstance, winName, ActiveWindow)
 
 
 -- | Push a key
@@ -143,6 +146,19 @@ forVLC maker = whenFront (\w -> winInstance w == "vlc") $ maker conf where
            vpToggleFull = push "f",
            vpToggleDVDMenu = push "Shift+m"
          }
+
+thunar :: Binding ActiveWindow NumPadUnlocked
+thunar = whenFront (\w -> winInstance w == "Thunar" && winClass w == "Thunar") $ binds $ do
+  on NumHome `as` "Home directory" `run` push "Alt+Home"
+  on NumPageUp `as` "Parent directory" `run` push "Alt+Up"
+
+thunarMenu :: Text -> Binding ActiveWindow NumPadUnlocked
+thunarMenu menu_window_name_part = whenFront frontCondition $ thunar <> ext where
+  frontCondition w = menu_window_name_part `isInfixOf` winName w
+  ext = binds $ do
+    on NumCenter `as` "Run" `run` do
+      push "Return"
+      cmd' ("sleep 0.3; xdotool search --name '" ++ unpack menu_window_name_part ++ "' windowkill")
 
 
 data GimpConfig = GimpConfig { gimpSwapColor :: IO ()
