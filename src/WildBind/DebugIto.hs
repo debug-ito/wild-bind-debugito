@@ -16,6 +16,7 @@ module WildBind.DebugIto
          -- * Video players
          VideoPlayerConfig(..),
          videoPlayer,
+         dvdPlayer,
          totemConfig,
          vlcConfig,
          -- * GIMP
@@ -26,6 +27,7 @@ module WildBind.DebugIto
 
 import Control.Monad (void)
 import Control.Monad.IO.Class (MonadIO(liftIO))
+import qualified Control.Monad.Trans.State as State
 import Data.Monoid ((<>))
 import Data.Text (isInfixOf)
 import System.Process (callCommand, spawnCommand)
@@ -33,7 +35,8 @@ import WildBind.Input.NumPad (NumPadUnlocked(..))
 import WildBind.Binding
   ( Binding,
     binds, on, as, run,
-    whenFront
+    whenFront,
+    startFrom, ifBack, binds', extend
   )
 import WildBind.X11 (winClass, winInstance, ActiveWindow)
 
@@ -78,7 +81,8 @@ data VideoPlayerConfig =
     vpBackNormal, vpForwardNormal,
     vpBackBig, vpForwardBig,
     vpBackSmall, vpForwardSmall,
-    vpToggleFull :: IO ()
+    vpToggleFull,
+    vpToggleDVDMenu :: IO ()
   }
 
 videoPlayer :: VideoPlayerConfig -> Binding s NumPadUnlocked
@@ -94,6 +98,19 @@ videoPlayer v = binds $ do
   on NumPageDown `as` "Forward (S)" `run` (vpForwardSmall v)
   on NumInsert `as` "Toggle Full Screen" `run` (vpToggleFull v)
 
+
+data PlayerMode = NormalPlayer | DVDPlayer deriving (Show, Eq, Ord)
+
+dvdPlayer :: VideoPlayerConfig -> Binding s NumPadUnlocked
+dvdPlayer conf = startFrom DVDPlayer $ ifBack (== NormalPlayer) normal_mode dvd_mode where
+  normal_mode = extend (videoPlayer conf)
+                <> ( binds' $ do
+                        on NumDelete `as` "DVD Mode" `run` State.put DVDPlayer
+                   )
+  dvd_mode = binds' $ do
+    on NumDelete `as` "Normal Mode" `run` State.put NormalPlayer
+    on NumPageDown `as` "Toggle Menu" `run` (liftIO $ vpToggleDVDMenu conf)
+
 totemConfig :: VideoPlayerConfig
 totemConfig = VideoPlayerConfig
               { vpPlayPause = push "p",
@@ -105,7 +122,8 @@ totemConfig = VideoPlayerConfig
                 vpForwardBig = push "Control+Right",
                 vpBackSmall = push "Shift+Left",
                 vpForwardSmall = push "Shift+Right",
-                vpToggleFull = push "f"
+                vpToggleFull = push "f",
+                vpToggleDVDMenu = push "m"
               }
 
 vlcConfig :: VideoPlayerConfig
@@ -119,7 +137,8 @@ vlcConfig = VideoPlayerConfig
               vpForwardBig = push "Ctrl+Right",
               vpBackSmall = push "Shift+Left",
               vpForwardSmall = push "Shift+Right",
-              vpToggleFull = push "f"
+              vpToggleFull = push "f",
+              vpToggleDVDMenu = push "Shift+m"
             }
 
 
