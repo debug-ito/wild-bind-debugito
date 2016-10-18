@@ -25,13 +25,16 @@ module WildBind.DebugIto
          -- * GIMP
          GimpConfig(..),
          defGimpConfig,
-         gimp
+         gimp,
+         -- * Firefox
+         FirefoxConfig(..),
+         firefox
        ) where
 
-import Control.Monad (void)
+import Control.Monad (void, forM_)
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import qualified Control.Monad.Trans.State as State
-import Data.Monoid ((<>))
+import Data.Monoid ((<>), mempty)
 import Data.Text (Text, isInfixOf, isSuffixOf, unpack)
 import System.Process (callCommand, spawnCommand)
 import WildBind.Input.NumPad (NumPadUnlocked(..))
@@ -39,7 +42,8 @@ import WildBind.Binding
   ( Binding,
     binds, on, as, run,
     whenFront,
-    startFrom, ifBack, binds', extend
+    startFrom, ifBack, binds', extend,
+    advice, before, after
   )
 import WildBind.X11 (winClass, winInstance, winName, ActiveWindow)
 
@@ -181,4 +185,70 @@ gimp conf = whenFront (\w -> "Gimp" `isInfixOf` winClass w) $ binds $ do
   on NumDown `as` "縮小" `run` push "minus"
   on NumInsert `as` "保存" `run` push "Ctrl+s"
   on NumPageDown `as` "拡大" `run` push "plus"
+
+
+data FirefoxConfig = FirefoxConfig -- TODO
+
+data FirefoxState = FFBase | FFExt | FFFont | FFLink | FFBookmark deriving (Show,Eq,Ord)
+
+firefox :: Binding ActiveWindow NumPadUnlocked
+firefox = whenFront (\w -> winInstance w == "Navigator" && winClass w == "Firefox") impl where
+  impl = startFrom FFBase
+         $ binds_cancel
+         <> ( ifBack (== FFBase) binds_base
+              $ ifBack (== FFExt) (binds_all_cancel <> binds_ext)
+              $ ifBack (== FFFont) (binds_all_cancel <> binds_font)
+              $ ifBack (== FFLink) (binds_all_cancel <> binds_link)
+              $ ifBack (== FFBookmark) binds_bookmark
+              $ mempty
+            )
+  cancel_act = id `as` "Cancel" `run` (State.put FFBase >> push "Ctrl+g")
+  binds_all_cancel = binds' $ do
+    forM_ (enumFromTo minBound maxBound) $ \k -> on k cancel_act
+  binds_cancel = binds' $ do
+    on NumDelete cancel_act
+  binds_base = binds' $ do
+    on NumLeft `as` "Left tab" `run` push "Shift+Ctrl+Tab"
+    on NumRight `as` "Right tab" `run` push "Ctrl+Tab"
+    on NumEnd `as` "Close tab" `run` pushes ["Ctrl+q", "Ctrl+w"]
+    on NumInsert `as` "Bookmark" `run` do
+      State.put FFBookmark
+      pushes ["Ctrl+q", "Ctrl+b"]
+    on NumCenter `as` "Link" `run` do
+      State.put FFLink
+      pushes ["Ctrl+u", "e"]
+    on NumHome `as` "Ext." `run` State.put FFExt
+  binds_ext = binds_ext_base <> binds_font
+  binds_ext_base = binds' $ do
+    on NumHome `as` "Link new tab" `run` do
+      State.put FFLink
+      pushes ["Ctrl+u", "Shift+e"]
+    advice (before $ State.put FFBase) $ do
+      on NumPageUp `as` "Reload" `run` push "F5"
+      on NumLeft `as` "Back" `run` push "Shift+b"
+      on NumRight `as` "Forward" `run` push "Shift+f"
+      on NumPageDown `as` "Home" `run` push "Alt+Home"
+      on NumEnd `as` "Restore tab" `run` pushes ["Ctrl+c", "u"]
+  binds_font = binds' $ do
+    on NumCenter `as` "Normal font" `run` do
+      State.put FFBase
+      push "Ctrl+0"
+    advice (before $ State.put FFFont) $ do
+      on NumUp `as` "Larger font" `run` push "Ctrl+plus"
+      on NumDown `as` "Smaller font" `run` pushes ["Ctrl+q", "Ctrl+minus"]
+  binds_link = binds' $ do
+    forM_ (enumFromTo minBound maxBound) $ \k -> on k cancel_act
+    on NumUp `as` "OK" `run` do
+      State.put FFBase
+      push "Return"
+    on NumLeft `as` "4" `run` push "4"
+    on NumCenter `as` "5" `run` push "5"
+    on NumRight `as` "6" `run` push "6"
+  binds_bookmark = binds' $ do
+    on NumEnd `as` "Tab" `run` push "Tab"
+    advice (after $ pushes ["Ctrl+q", "Ctrl+b"]) $ do
+      forM_ [NumHome, NumInsert, NumDelete] $ \k -> on k cancel_act
+      advice (after $ State.put FFBase) $ do
+        on NumCenter `as` "Select (new tab)" `run` push "Ctrl+Return"
+        on NumInsert `as` "Select (cur tab)" `run` push "Return"
 
