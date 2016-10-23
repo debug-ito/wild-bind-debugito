@@ -68,8 +68,8 @@ base = binds $ do
   on NumCenter `as` "Enter" `run` push "Return"
 
 
-data GlobalConfig = GlobalConfig { globalMaximize :: IO (),
-                                   globalMenu :: IO ()
+data GlobalConfig = GlobalConfig { globalMaximize :: IO (), -- ^ action to maximize the active window.
+                                   globalMenu :: IO () -- ^ action to open the menu window.
                                  }
 
 -- | Binding that should be globally active
@@ -157,7 +157,8 @@ thunar = whenFront (\w -> winInstance w == "Thunar" && winClass w == "Thunar") $
   on NumHome `as` "Home directory" `run` push "Alt+Home"
   on NumPageUp `as` "Parent directory" `run` push "Alt+Up"
 
-thunarMenu :: Text -> Binding ActiveWindow NumPadUnlocked
+thunarMenu :: Text -- ^ a string that should be part of the menu window's title.
+           -> Binding ActiveWindow NumPadUnlocked
 thunarMenu menu_window_name_part = whenFront frontCondition $ thunar <> ext where
   frontCondition w = menu_window_name_part `isInfixOf` winName w
   ext = binds $ do
