@@ -40,7 +40,7 @@ import Data.Text (Text, isInfixOf, isSuffixOf, unpack)
 import System.Process (callCommand, spawnCommand)
 import WildBind.Input.NumPad (NumPadUnlocked(..))
 import WildBind.Binding
-  ( Binding,
+  ( Binding, Binding',
     binds, on, as, run,
     whenFront,
     startFrom, ifBack, binds', extend,
@@ -93,32 +93,33 @@ data VideoPlayerConfig =
     vpToggleDVDMenu :: IO ()
   }
 
-videoPlayer :: VideoPlayerConfig -> Binding s NumPadUnlocked
-videoPlayer v = binds $ do
-  on NumHome `as` "Back (L)" `run` (vpBackBig v)
-  on NumUp `as` "Vol up" `run` (vpVolumeUp v)
-  on NumPageUp `as` "Forward (L)" `run` (vpForwardBig v)
-  on NumLeft `as` "Back (M)" `run` (vpBackNormal v)
-  on NumCenter `as` "Play/Pause" `run` (vpPlayPause v)
-  on NumRight `as` "Forward (M)" `run` (vpForwardNormal v)
-  on NumEnd `as` "Back (S)" `run` (vpBackSmall v)
-  on NumDown `as` "Vol down" `run` (vpVolumeDown v)
-  on NumPageDown `as` "Forward (S)" `run` (vpForwardSmall v)
-  on NumInsert `as` "Toggle Full Screen" `run` (vpToggleFull v)
-
 
 data PlayerMode = NormalPlayer | DVDPlayer deriving (Show, Eq, Ord)
 
-dvdPlayer :: VideoPlayerConfig -> Binding ActiveWindow NumPadUnlocked
-dvdPlayer conf = frontCondition $ startFrom DVDPlayer $ ifBack (== NormalPlayer) normal_mode dvd_mode where
-  frontCondition = whenFront $ \w -> "_DVD" `isSuffixOf` winClass w
-  normal_mode = extend (videoPlayer conf)
-                <> ( binds' $ do
-                        on NumDelete `as` "DVD Mode" `run` State.put DVDPlayer
-                   )
+videoPlayerBase :: VideoPlayerConfig -> Binding' PlayerMode s NumPadUnlocked
+videoPlayerBase conf = ifBack (== NormalPlayer) normal_mode dvd_mode where
+  act field = liftIO $ field conf
+  normal_mode = binds' $ do
+    on NumHome `as` "Back (L)" `run` act vpBackBig
+    on NumUp `as` "Vol up" `run` act vpVolumeUp
+    on NumPageUp `as` "Forward (L)" `run` act vpForwardBig
+    on NumLeft `as` "Back (M)" `run` act vpBackNormal
+    on NumCenter `as` "Play/Pause" `run` act vpPlayPause
+    on NumRight `as` "Forward (M)" `run` act vpForwardNormal
+    on NumEnd `as` "Back (S)" `run` act vpBackSmall
+    on NumDown `as` "Vol down" `run` act vpVolumeDown
+    on NumPageDown `as` "Forward (S)" `run` act vpForwardSmall
+    on NumInsert `as` "Toggle Full Screen" `run` act vpToggleFull
+    on NumDelete `as` "DVD Mode" `run` State.put DVDPlayer
   dvd_mode = binds' $ do
     on NumDelete `as` "Normal Mode" `run` State.put NormalPlayer
-    on NumPageDown `as` "Toggle Menu" `run` (liftIO $ vpToggleDVDMenu conf)
+    on NumPageDown `as` "Toggle Menu" `run` act vpToggleDVDMenu
+
+videoPlayer :: VideoPlayerConfig -> Binding s NumPadUnlocked
+videoPlayer = startFrom NormalPlayer . videoPlayerBase
+
+dvdPlayer :: VideoPlayerConfig -> Binding ActiveWindow NumPadUnlocked
+dvdPlayer = startFrom DVDPlayer . videoPlayerBase
 
 forTotem :: (VideoPlayerConfig -> Binding ActiveWindow i) -> Binding ActiveWindow i
 forTotem maker = whenFront (\w -> winInstance w == "totem") $ maker conf where
