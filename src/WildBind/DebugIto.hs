@@ -28,6 +28,7 @@ module WildBind.DebugIto
          gimp,
          -- * Firefox
          FirefoxConfig(..),
+         defFirefoxConfig,
          firefox
        ) where
 
@@ -187,12 +188,38 @@ gimp conf = whenFront (\w -> "Gimp" `isInfixOf` winClass w) $ binds $ do
   on NumPageDown `as` "拡大" `run` push "plus"
 
 
-data FirefoxConfig = FirefoxConfig -- TODO
+data FirefoxConfig = FirefoxConfig { ffCancel,
+                                     ffLeftTab, ffRightTab, ffCloseTab,
+                                     ffToggleBookmarks,
+                                     ffLink, ffLinkNewTab,
+                                     ffReload,
+                                     ffBack, ffForward, ffHome,
+                                     ffRestoreTab,
+                                     ffFontNormal, ffFontBigger, ffFontSmaller :: IO ()
+                                   }
+
+defFirefoxConfig :: FirefoxConfig
+defFirefoxConfig = FirefoxConfig { ffCancel = push "Ctrl+g",
+                                   ffLeftTab = push "Shift+Ctrl+Tab",
+                                   ffRightTab = push "Ctrl+Tab",
+                                   ffCloseTab = pushes ["Ctrl+q", "Ctrl+w"],
+                                   ffToggleBookmarks = pushes ["Ctrl+q", "Ctrl+b"],
+                                   ffLink = pushes ["Ctrl+u", "e"],
+                                   ffLinkNewTab = pushes ["Ctrl+u", "Shift+e"],
+                                   ffReload = push "F5",
+                                   ffBack = push "Shift+b",
+                                   ffForward = push "Shift+f",
+                                   ffHome = push "Alt+Home",
+                                   ffRestoreTab = pushes ["Ctrl+c", "u"],
+                                   ffFontNormal = push "Ctrl+0",
+                                   ffFontBigger = push "Ctrl+plus",
+                                   ffFontSmaller = pushes ["Ctrl+q", "Ctrl+minus"]
+                                 }
 
 data FirefoxState = FFBase | FFExt | FFFont | FFLink | FFBookmark deriving (Show,Eq,Ord)
 
-firefox :: Binding ActiveWindow NumPadUnlocked
-firefox = whenFront (\w -> winInstance w == "Navigator" && winClass w == "Firefox") impl where
+firefox :: FirefoxConfig -> Binding ActiveWindow NumPadUnlocked
+firefox conf = whenFront (\w -> winInstance w == "Navigator" && winClass w == "Firefox") impl where
   impl = startFrom FFBase
          $ binds_cancel
          <> ( ifBack (== FFBase) binds_base
@@ -202,40 +229,41 @@ firefox = whenFront (\w -> winInstance w == "Navigator" && winClass w == "Firefo
               $ ifBack (== FFBookmark) binds_bookmark
               $ mempty
             )
-  cancel_act = id `as` "Cancel" `run` (State.put FFBase >> push "Ctrl+g")
+  act field = liftIO $ field conf
+  cancel_act = id `as` "Cancel" `run` (State.put FFBase >> act ffCancel)
   binds_all_cancel = binds' $ do
     forM_ (enumFromTo minBound maxBound) $ \k -> on k cancel_act
   binds_cancel = binds' $ do
     on NumDelete cancel_act
   binds_base = binds' $ do
-    on NumLeft `as` "Left tab" `run` push "Shift+Ctrl+Tab"
-    on NumRight `as` "Right tab" `run` push "Ctrl+Tab"
-    on NumEnd `as` "Close tab" `run` pushes ["Ctrl+q", "Ctrl+w"]
+    on NumLeft `as` "Left tab" `run` act ffLeftTab
+    on NumRight `as` "Right tab" `run` act ffRightTab
+    on NumEnd `as` "Close tab" `run` act ffCloseTab
     on NumInsert `as` "Bookmark" `run` do
       State.put FFBookmark
-      pushes ["Ctrl+q", "Ctrl+b"]
+      act ffToggleBookmarks
     on NumCenter `as` "Link" `run` do
       State.put FFLink
-      pushes ["Ctrl+u", "e"]
+      act ffLink
     on NumHome `as` "Ext." `run` State.put FFExt
   binds_ext = binds_ext_base <> binds_font
   binds_ext_base = binds' $ do
     on NumHome `as` "Link new tab" `run` do
       State.put FFLink
-      pushes ["Ctrl+u", "Shift+e"]
+      act ffLinkNewTab
     advice (before $ State.put FFBase) $ do
-      on NumPageUp `as` "Reload" `run` push "F5"
-      on NumLeft `as` "Back" `run` push "Shift+b"
-      on NumRight `as` "Forward" `run` push "Shift+f"
-      on NumPageDown `as` "Home" `run` push "Alt+Home"
-      on NumEnd `as` "Restore tab" `run` pushes ["Ctrl+c", "u"]
+      on NumPageUp `as` "Reload" `run` act ffReload
+      on NumLeft `as` "Back" `run` act ffBack
+      on NumRight `as` "Forward" `run` act ffForward
+      on NumPageDown `as` "Home" `run` act ffHome
+      on NumEnd `as` "Restore tab" `run` act ffRestoreTab
   binds_font = binds' $ do
     on NumCenter `as` "Normal font" `run` do
       State.put FFBase
-      push "Ctrl+0"
+      act ffFontNormal
     advice (before $ State.put FFFont) $ do
-      on NumUp `as` "Larger font" `run` push "Ctrl+plus"
-      on NumDown `as` "Smaller font" `run` pushes ["Ctrl+q", "Ctrl+minus"]
+      on NumUp `as` "Bigger font" `run` act ffFontBigger
+      on NumDown `as` "Smaller font" `run` act ffFontSmaller
   binds_link = binds' $ do
     forM_ (enumFromTo minBound maxBound) $ \k -> on k cancel_act
     on NumUp `as` "OK" `run` do
@@ -246,7 +274,7 @@ firefox = whenFront (\w -> winInstance w == "Navigator" && winClass w == "Firefo
     on NumRight `as` "6" `run` push "6"
   binds_bookmark = binds' $ do
     on NumEnd `as` "Tab" `run` push "Tab"
-    advice (after $ pushes ["Ctrl+q", "Ctrl+b"]) $ do
+    advice (after $ act ffToggleBookmarks) $ do
       forM_ [NumHome, NumInsert, NumDelete] $ \k -> on k cancel_act
       advice (after $ State.put FFBase) $ do
         on NumCenter `as` "Select (new tab)" `run` push "Ctrl+Return"
