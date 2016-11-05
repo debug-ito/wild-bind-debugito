@@ -97,7 +97,7 @@ data VideoPlayerConfig =
 data PlayerMode = NormalPlayer | DVDPlayer deriving (Show, Eq, Ord)
 
 videoPlayerBase :: VideoPlayerConfig -> Binding' PlayerMode s NumPadUnlocked
-videoPlayerBase conf = ifBack (== NormalPlayer) normal_mode dvd_mode where
+videoPlayerBase conf = (ifBack (== NormalPlayer) normal_mode dvd_mode) <> common where
   act field = liftIO $ field conf
   normal_mode = binds' $ do
     on NumHome `as` "Back (L)" `run` act vpBackBig
@@ -109,11 +109,12 @@ videoPlayerBase conf = ifBack (== NormalPlayer) normal_mode dvd_mode where
     on NumEnd `as` "Back (S)" `run` act vpBackSmall
     on NumDown `as` "Vol down" `run` act vpVolumeDown
     on NumPageDown `as` "Forward (S)" `run` act vpForwardSmall
-    on NumInsert `as` "Toggle Full Screen" `run` act vpToggleFull
     on NumDelete `as` "DVD Mode" `run` State.put DVDPlayer
   dvd_mode = binds' $ do
     on NumDelete `as` "Normal Mode" `run` State.put NormalPlayer
     on NumPageDown `as` "Toggle Menu" `run` act vpToggleDVDMenu
+  common = binds $ do
+    on NumInsert `as` "Toggle Full Screen" `run` act vpToggleFull
 
 videoPlayer :: VideoPlayerConfig -> Binding s NumPadUnlocked
 videoPlayer = startFrom NormalPlayer . videoPlayerBase
