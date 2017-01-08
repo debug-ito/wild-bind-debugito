@@ -278,8 +278,8 @@ firefox conf = whenFront (\w -> winInstance w == "Navigator" && winClass w == "F
   binds_bookmark = binds' $ do
     on NumEnd `as` "Tab" `run` push "Tab"
     advice (after $ act ffToggleBookmarks) $ do
-      forM_ [NumHome, NumInsert, NumDelete] $ \k -> on k cancel_act
+      forM_ [NumInsert, NumDelete] $ \k -> on k cancel_act
       advice (after $ State.put FFBase) $ do
         on NumCenter `as` "Select (new tab)" `run` push "Ctrl+Return"
-        on NumInsert `as` "Select (cur tab)" `run` push "Return"
+        on NumHome `as` "Select (cur tab)" `run` push "Return"
 
