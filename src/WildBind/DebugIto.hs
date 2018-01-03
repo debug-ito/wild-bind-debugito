@@ -28,9 +28,10 @@ module WildBind.DebugIto
          GimpConfig(..),
          defGimpConfig,
          gimp,
-         -- * Firefox
-         FirefoxConfig(..),
+         -- * Web browsers
+         WebBrowserConfig(..),
          defFirefoxConfig,
+         webBrowser,
          firefox
        ) where
 
@@ -207,103 +208,110 @@ gimp x11 conf = whenFront (\w -> "Gimp" `isInfixOf` winClass w) $ bindsF $ do
     push' = push x11
 
 
-data FirefoxConfig = FirefoxConfig { ffCancel,
-                                     ffLeftTab, ffRightTab, ffCloseTab,
-                                     ffToggleBookmarks,
-                                     ffLink, ffLinkNewTab,
-                                     ffReload,
-                                     ffBack, ffForward, ffHome,
-                                     ffRestoreTab,
-                                     ffFontNormal, ffFontBigger, ffFontSmaller :: ReaderT ActiveWindow IO ()
-                                   }
+data WebBrowserConfig =
+  WebBrowserConfig
+  { wbCancel,
+    wbLeftTab, wbRightTab, wbCloseTab,
+    wbToggleBookmarks,
+    wbLink, wbLinkNewTab,
+    wbReload,
+    wbBack, wbForward, wbHome,
+    wbRestoreTab,
+    wbFontNormal, wbFontBigger, wbFontSmaller :: ReaderT ActiveWindow IO ()
+  }
 
-defFirefoxConfig :: X11Front i -> FirefoxConfig
+defFirefoxConfig :: X11Front i -> WebBrowserConfig
 defFirefoxConfig x11 =
-  FirefoxConfig
-  { ffCancel = push' (ctrl xK_g),
-    ffLeftTab = push' (shift $ ctrl xK_Tab),
-    ffRightTab = push' (ctrl xK_Tab),
-    ffCloseTab = pushes' [ctrl xK_q, ctrl xK_w],
-    ffToggleBookmarks = pushes' [ctrl xK_q, ctrl xK_b],
-    ffLink = pushes' [ctrl xK_u, press xK_e],
-    ffLinkNewTab = pushes' [ctrl xK_u, shift xK_E],
-    ffReload = push' xK_F5,
-    ffBack = push' (shift xK_B),
-    ffForward = push' (shift xK_F),
-    ffHome = push' (alt xK_Home),
-    ffRestoreTab = pushes' [ctrl xK_c, press xK_u],
-    ffFontNormal = push' (ctrl xK_0),
-    ffFontBigger = push' (ctrl xK_plus),
-    ffFontSmaller = pushes' [ctrl xK_q, ctrl xK_minus]
+  WebBrowserConfig
+  { wbCancel = push' (ctrl xK_g),
+    wbLeftTab = push' (shift $ ctrl xK_Tab),
+    wbRightTab = push' (ctrl xK_Tab),
+    wbCloseTab = pushes' [ctrl xK_q, ctrl xK_w],
+    wbToggleBookmarks = pushes' [ctrl xK_q, ctrl xK_b],
+    wbLink = pushes' [ctrl xK_u, press xK_e],
+    wbLinkNewTab = pushes' [ctrl xK_u, shift xK_E],
+    wbReload = push' xK_F5,
+    wbBack = push' (shift xK_B),
+    wbForward = push' (shift xK_F),
+    wbHome = push' (alt xK_Home),
+    wbRestoreTab = pushes' [ctrl xK_c, press xK_u],
+    wbFontNormal = push' (ctrl xK_0),
+    wbFontBigger = push' (ctrl xK_plus),
+    wbFontSmaller = pushes' [ctrl xK_q, ctrl xK_minus]
   }
   where
     push' :: (ToXKeyEvent k, _) => k -> _
     push' = push x11
     pushes' = pushes x11
 
-data FirefoxState = FFBase | FFExt | FFFont | FFLink | FFBookmark deriving (Show,Eq,Ord)
+data WebBrowserState = WBBase | WBExt | WBFont | WBLink | WBBookmark deriving (Show,Eq,Ord)
 
-firefox :: X11Front i -> FirefoxConfig -> Binding ActiveWindow NumPadUnlocked
-firefox x11 conf = whenFront (\w -> winInstance w == "Navigator" && winClass w == "Firefox") impl where
+firefox :: X11Front i -> Binding ActiveWindow NumPadUnlocked
+firefox x11 = whenFront cond $ webBrowser x11 (defFirefoxConfig x11)
+  where
+    cond w = winInstance w == "Navigator" && winClass w == "Firefox"
+
+webBrowser :: X11Front i -> WebBrowserConfig -> Binding ActiveWindow NumPadUnlocked
+webBrowser x11 conf = impl where
   push' :: (ToXKeyEvent k, _) => k -> _
   push' = push x11
-  impl = startFrom FFBase
+  impl = startFrom WBBase
          $ binds_cancel
-         <> ( ifBack (== FFBase) binds_base
-              $ ifBack (== FFExt) (binds_all_cancel <> binds_ext)
-              $ ifBack (== FFFont) (binds_all_cancel <> binds_font)
-              $ ifBack (== FFLink) (binds_all_cancel <> binds_link)
-              $ ifBack (== FFBookmark) binds_bookmark
+         <> ( ifBack (== WBBase) binds_base
+              $ ifBack (== WBExt) (binds_all_cancel <> binds_ext)
+              $ ifBack (== WBFont) (binds_all_cancel <> binds_font)
+              $ ifBack (== WBLink) (binds_all_cancel <> binds_link)
+              $ ifBack (== WBBookmark) binds_bookmark
               $ mempty
             )
   act field = lift $ field conf
-  cancel_act = id `as` "Cancel" `run` (State.put FFBase >> act ffCancel)
+  cancel_act = id `as` "Cancel" `run` (State.put WBBase >> act wbCancel)
   binds_all_cancel = bindsF' $ do
     forM_ (enumFromTo minBound maxBound) $ \k -> on k cancel_act
   binds_cancel = bindsF' $ do
     on NumDelete cancel_act
   binds_base = bindsF' $ do
-    on NumLeft `as` "Left tab" `run` act ffLeftTab
-    on NumRight `as` "Right tab" `run` act ffRightTab
-    on NumEnd `as` "Close tab" `run` act ffCloseTab
+    on NumLeft `as` "Left tab" `run` act wbLeftTab
+    on NumRight `as` "Right tab" `run` act wbRightTab
+    on NumEnd `as` "Close tab" `run` act wbCloseTab
     on NumInsert `as` "Bookmark" `run` do
-      State.put FFBookmark
-      act ffToggleBookmarks
+      State.put WBBookmark
+      act wbToggleBookmarks
     on NumCenter `as` "Link" `run` do
-      State.put FFLink
-      act ffLink
-    on NumHome `as` "Ext." `run` State.put FFExt
+      State.put WBLink
+      act wbLink
+    on NumHome `as` "Ext." `run` State.put WBExt
   binds_ext = binds_ext_base <> binds_font
   binds_ext_base = bindsF' $ do
     on NumHome `as` "Link new tab" `run` do
-      State.put FFLink
-      act ffLinkNewTab
-    advice (before $ State.put FFBase) $ do
-      on NumPageUp `as` "Reload" `run` act ffReload
-      on NumLeft `as` "Back" `run` act ffBack
-      on NumRight `as` "Forward" `run` act ffForward
-      on NumPageDown `as` "Home" `run` act ffHome
-      on NumEnd `as` "Restore tab" `run` act ffRestoreTab
+      State.put WBLink
+      act wbLinkNewTab
+    advice (before $ State.put WBBase) $ do
+      on NumPageUp `as` "Reload" `run` act wbReload
+      on NumLeft `as` "Back" `run` act wbBack
+      on NumRight `as` "Forward" `run` act wbForward
+      on NumPageDown `as` "Home" `run` act wbHome
+      on NumEnd `as` "Restore tab" `run` act wbRestoreTab
   binds_font = bindsF' $ do
     on NumCenter `as` "Normal font" `run` do
-      State.put FFBase
-      act ffFontNormal
-    advice (before $ State.put FFFont) $ do
-      on NumUp `as` "Bigger font" `run` act ffFontBigger
-      on NumDown `as` "Smaller font" `run` act ffFontSmaller
+      State.put WBBase
+      act wbFontNormal
+    advice (before $ State.put WBFont) $ do
+      on NumUp `as` "Bigger font" `run` act wbFontBigger
+      on NumDown `as` "Smaller font" `run` act wbFontSmaller
   binds_link = bindsF' $ do
     forM_ (enumFromTo minBound maxBound) $ \k -> on k cancel_act
     on NumUp `as` "OK" `run` do
-      State.put FFBase
+      State.put WBBase
       push' xK_Return
     on NumLeft `as` "4" `run` push' xK_4
     on NumCenter `as` "5" `run` push' xK_5
     on NumRight `as` "6" `run` push' xK_6
   binds_bookmark = bindsF' $ do
     on NumEnd `as` "Tab" `run` push' xK_Tab
-    advice (after $ act ffToggleBookmarks) $ do
+    advice (after $ act wbToggleBookmarks) $ do
       forM_ [NumInsert, NumDelete] $ \k -> on k cancel_act
-      advice (after $ State.put FFBase) $ do
+      advice (after $ State.put WBBase) $ do
         on NumCenter `as` "Select (new tab)" `run` push' (ctrl xK_Return)
         on NumHome `as` "Select (cur tab)" `run` push' xK_Return
 
