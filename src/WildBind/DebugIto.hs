@@ -267,7 +267,7 @@ defVivaldiConfig x11 =
     wbHome = push' (alt xK_Home),
     wbRestoreTab = push' (shift $ ctrl xK_T),
     wbFontNormal = push' (ctrl xK_0),
-    wbFontBigger = push' (ctrl xK_plus),
+    wbFontBigger = push' (shift $ ctrl xK_semicolon),
     wbFontSmaller = push' (ctrl xK_minus),
     wbFrontCondition = \w -> winClass w == "Vivaldi-stable"
   }
