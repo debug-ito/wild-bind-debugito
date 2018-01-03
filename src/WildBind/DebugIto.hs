@@ -31,8 +31,10 @@ module WildBind.DebugIto
          -- * Web browsers
          WebBrowserConfig(..),
          defFirefoxConfig,
+         defVivaldiConfig,
          webBrowser,
-         firefox
+         firefox,
+         vivaldi
        ) where
 
 import Control.Monad (void, forM_)
@@ -247,10 +249,38 @@ defFirefoxConfig x11 =
     push' = push x11
     pushes' = pushes x11
 
+defVivaldiConfig :: X11Front i -> WebBrowserConfig
+defVivaldiConfig x11 =
+  WebBrowserConfig
+  { wbCancel = push' xK_Escape,
+    wbLeftTab = push' (ctrl xK_Page_Up),
+    wbRightTab = push' (ctrl xK_Page_Down),
+    wbCloseTab = push' (ctrl xK_w),
+    wbToggleBookmarks = push' xK_F6,
+    wbLink = push' xK_f,
+    wbLinkNewTab = push' (shift xK_C),
+    wbLinkFinish = return (),
+    wbReload = push' xK_F5,
+    wbBack = push' (ctrl xK_Left),
+    wbForward = push' (ctrl xK_Right),
+    wbHome = push' (alt xK_Home),
+    wbRestoreTab = push' (shift $ ctrl xK_T),
+    wbFontNormal = push' (ctrl xK_0),
+    wbFontBigger = push' (ctrl xK_plus),
+    wbFontSmaller = push' (ctrl xK_minus),
+    wbFrontCondition = \w -> winClass w == "Vivaldi-stable"
+  }
+  where
+    push' :: (ToXKeyEvent k, _) => k -> _
+    push' = push x11
+
 data WebBrowserState = WBBase | WBExt | WBFont | WBLink | WBBookmark deriving (Show,Eq,Ord)
 
 firefox :: X11Front i -> Binding ActiveWindow NumPadUnlocked
-firefox x11 = webBrowser x11 (defFirefoxConfig x11)
+firefox x11 = webBrowser x11 $ defFirefoxConfig x11
+
+vivaldi :: X11Front i -> Binding ActiveWindow NumPadUnlocked
+vivaldi x11 = webBrowser x11 $ defVivaldiConfig x11
 
 webBrowser :: X11Front i -> WebBrowserConfig -> Binding ActiveWindow NumPadUnlocked
 webBrowser x11 conf = impl where
