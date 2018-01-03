@@ -217,7 +217,8 @@ data WebBrowserConfig =
     wbReload,
     wbBack, wbForward, wbHome,
     wbRestoreTab,
-    wbFontNormal, wbFontBigger, wbFontSmaller :: ReaderT ActiveWindow IO ()
+    wbFontNormal, wbFontBigger, wbFontSmaller :: ReaderT ActiveWindow IO (),
+    wbFrontCondition :: ActiveWindow -> Bool
   }
 
 defFirefoxConfig :: X11Front i -> WebBrowserConfig
@@ -238,7 +239,8 @@ defFirefoxConfig x11 =
     wbRestoreTab = pushes' [ctrl xK_c, press xK_u],
     wbFontNormal = push' (ctrl xK_0),
     wbFontBigger = push' (ctrl xK_plus),
-    wbFontSmaller = pushes' [ctrl xK_q, ctrl xK_minus]
+    wbFontSmaller = pushes' [ctrl xK_q, ctrl xK_minus],
+    wbFrontCondition = \w -> winInstance w == "Navigator" && winClass w == "Firefox"
   }
   where
     push' :: (ToXKeyEvent k, _) => k -> _
@@ -248,15 +250,13 @@ defFirefoxConfig x11 =
 data WebBrowserState = WBBase | WBExt | WBFont | WBLink | WBBookmark deriving (Show,Eq,Ord)
 
 firefox :: X11Front i -> Binding ActiveWindow NumPadUnlocked
-firefox x11 = whenFront cond $ webBrowser x11 (defFirefoxConfig x11)
-  where
-    cond w = winInstance w == "Navigator" && winClass w == "Firefox"
+firefox x11 = webBrowser x11 (defFirefoxConfig x11)
 
 webBrowser :: X11Front i -> WebBrowserConfig -> Binding ActiveWindow NumPadUnlocked
 webBrowser x11 conf = impl where
   push' :: (ToXKeyEvent k, _) => k -> _
   push' = push x11
-  impl = startFrom WBBase
+  impl = whenFront (wbFrontCondition conf) $ startFrom WBBase
          $ binds_cancel
          <> ( ifBack (== WBBase) binds_base
               $ ifBack (== WBExt) (binds_all_cancel <> binds_ext)
