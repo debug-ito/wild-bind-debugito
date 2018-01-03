@@ -178,8 +178,9 @@ thunarMenu x11 menu_window_name_part = whenFront frontCondition $ thunar x11 <> 
   ext = bindsF $ do
     on NumCenter `as` "Run" `run` do
       push x11 xK_Return
-      cmd' ("sleep 0.3; xdotool search --name '" ++ unpack menu_window_name_part ++ "' windowkill")
-
+      -- cmd' ("sleep 0.3; xdotool search --name '" ++ unpack menu_window_name_part ++ "' windowkill")
+      push x11 (alt xK_F4)
+  
 
 data GimpConfig = GimpConfig { gimpSwapColor :: ReaderT ActiveWindow IO ()
                              }
