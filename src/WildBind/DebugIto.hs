@@ -55,10 +55,10 @@ import WildBind.Binding
   )
 import WildBind.X11
   ( winClass, winInstance, winName, ActiveWindow, Window,
-    ToXKeyEvent, X11Front,
+    ToXKeyEvent, X11Front, defaultRootWindow,
     alt, ctrl, shift, press
   )
-import WildBind.X11.Emulate (push)
+import WildBind.X11.Emulate (push, pushTo)
 import WildBind.X11.KeySym
 
 -- | Push a sequence of keys
@@ -87,11 +87,12 @@ data GlobalConfig =
 global :: X11Front i -> GlobalConfig -> Binding ActiveWindow NumPadUnlocked
 global x11 conf = global_nostate <> global_non_switcher where
   global_nostate = bindsF $ do
-    on NumMinus `as` "Close" `run` push x11 (alt xK_F4)
+    on NumMinus `as` "Close" `run` pushTo x11 rwin (alt xK_F4)
     on NumPlus `as` "Maximize" `run` globalMaximize conf
     on NumMulti `as` "Menu" `run` globalMenu conf
   global_non_switcher = whenFront (\w -> winInstance w /= "boring-window-switcher") $ binds $ do
     on NumEnter `as` "Switch" `run` cmd' "boring-window-switcher"
+  rwin = defaultRootWindow x11
 
 
 data VideoPlayerConfig =

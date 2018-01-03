@@ -6,10 +6,10 @@ import WildBind (wildBind, Binding)
 import WildBind.Input.NumPad (NumPadUnlocked)
 import WildBind.X11
   ( withX11Front, makeFrontEnd,
-    X11Front, ActiveWindow,
+    X11Front, ActiveWindow, defaultRootWindow,
     alt
   )
-import WildBind.X11.Emulate (push)
+import WildBind.X11.Emulate (push, pushTo)
 import WildBind.X11.KeySym
 import qualified WildBind.DebugIto as D
 
@@ -22,6 +22,7 @@ myBinding x11 = D.base x11
                 <> D.global x11 gconfig
   where
     gconfig = D.GlobalConfig
-              { D.globalMaximize = push x11 (alt xK_F7),
+              { D.globalMaximize = pushTo x11 rwin (alt xK_F7),
                 D.globalMenu = return ()
               }
+    rwin = defaultRootWindow x11
