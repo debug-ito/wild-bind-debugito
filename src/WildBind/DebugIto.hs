@@ -213,7 +213,7 @@ data WebBrowserConfig =
   { wbCancel,
     wbLeftTab, wbRightTab, wbCloseTab,
     wbToggleBookmarks,
-    wbLink, wbLinkNewTab,
+    wbLink, wbLinkNewTab, wbLinkFinish,
     wbReload,
     wbBack, wbForward, wbHome,
     wbRestoreTab,
@@ -230,6 +230,7 @@ defFirefoxConfig x11 =
     wbToggleBookmarks = pushes' [ctrl xK_q, ctrl xK_b],
     wbLink = pushes' [ctrl xK_u, press xK_e],
     wbLinkNewTab = pushes' [ctrl xK_u, shift xK_E],
+    wbLinkFinish = push' xK_Return,
     wbReload = push' xK_F5,
     wbBack = push' (shift xK_B),
     wbForward = push' (shift xK_F),
@@ -303,7 +304,7 @@ webBrowser x11 conf = impl where
     forM_ (enumFromTo minBound maxBound) $ \k -> on k cancel_act
     on NumUp `as` "OK" `run` do
       State.put WBBase
-      push' xK_Return
+      act wbLinkFinish
     on NumLeft `as` "4" `run` push' xK_4
     on NumCenter `as` "5" `run` push' xK_5
     on NumRight `as` "6" `run` push' xK_6
