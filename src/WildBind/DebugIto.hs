@@ -391,11 +391,9 @@ vivaldiKey x11 = whenFront condVivaldi binding
   where
     condVivaldi w = winClass w == "Vivaldi-stable"
     condXev w = winName w == "Event Tester"
-    remap' :: (ToXKeyEvent a, ToXKeyEvent b) => a -> b -> Binding ActiveWindow XKeyEvent
     remap' = remap x11
-    remapR' :: (ToXKeyEvent a, ToXKeyEvent b) => a -> b -> Binding ActiveWindow XKeyEvent
+    remap'' = remap x11
     remapR' = remapR x11
-    toSeq' ps = withPrefix ps . toSeq
     fromSeq' = fromSeq . reviseSeq rev
       where
         -- rev ps _ _ = justBefore $ TIO.putStr ( "(Prefix: " <> (intercalate "," $ fmap describe ps) <> ") " )
@@ -405,21 +403,21 @@ vivaldiKey x11 = whenFront condVivaldi binding
     binding = revise revInput $ mconcat
               [ remap' (ctrl xK_n) (xK_Down),
                 remap' (ctrl xK_p) (xK_Up),
-                remap' (ctrl xK_s) (press xK_slash),
+                remap' (ctrl xK_s) (xK_slash),
                 remapR' (ctrl xK_m) (xK_Return),
                 remapR' (ctrl xK_g) (xK_Escape),
-                fromSeq' $ withCancel [ctrl xK_g]
-                $ mconcat [ toSeq' [ctrl xK_z] z_binding,
-                            toSeq' [ctrl xK_x] x_binding
-                          ]
+                fromSeq' $ withCancel [ctrl xK_g] seq_binding
               ]
-    z_binding = mconcat [ remap' (ctrl xK_n) (ctrl xK_Page_Down),
-                          remap' (ctrl xK_p) (ctrl xK_Page_Up),
-                          remap' (ctrl xK_c) (ctrl xK_t),
-                          remap' (ctrl xK_k) (ctrl xK_w),
-                          remap' (ctrl xK_slash) (shift $ ctrl xK_T)
+    seq_binding = mconcat [ withPrefix [ctrl xK_z] $ toSeq z_binding,
+                            withPrefix [ctrl xK_x] $ toSeq x_binding
+                          ]
+    z_binding = mconcat [ remap'' (ctrl xK_n) (ctrl xK_Page_Down),
+                          remap'' (ctrl xK_p) (ctrl xK_Page_Up),
+                          remap'' (ctrl xK_c) (ctrl xK_t),
+                          remap'' (ctrl xK_k) (ctrl xK_w),
+                          remap'' (ctrl xK_slash) (shift $ ctrl xK_T)
                         ]
-    x_binding = mconcat [ remap' (ctrl xK_f) (ctrl xK_o),
-                          remap' (ctrl xK_s) (ctrl xK_s)
+    x_binding = mconcat [ remap'' (ctrl xK_f) (ctrl xK_o),
+                          remap'' (ctrl xK_s) (ctrl xK_s)
                         ]
 
