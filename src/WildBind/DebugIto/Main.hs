@@ -29,7 +29,7 @@ import WildBind.X11
   ( withX11Front, makeFrontEnd,
     X11Front, ActiveWindow, defaultRootWindow,
     winInstance, winClass, winName,
-    alt, ctrl, shift,
+    alt, ctrl, shift, press,
     XKeyEvent, ToXKeyEvent
   )
 import WildBind.X11.Emulate (push, pushTo, remap, remapR)
@@ -58,10 +58,10 @@ numBinding x11 =
   <> D.global (D.xfceGlobalConfig x11 "/home/toshio/numpaar/menu_numpaar")
 
 normalBinding :: X11Front i -> Binding ActiveWindow XKeyEvent
-normalBinding x11 = whenFront condFF ff
-                    <> whenFront condXev ff -- for testing.
+normalBinding x11 = whenFront condVivaldi binding
+                    <> whenFront condXev binding -- for testing.
   where
-    condFF w = (winInstance w == "Navigator" && winClass w == "Firefox")
+    condVivaldi w = winClass w == "Vivaldi-stable"
     condXev w = winName w == "Event Tester"
     remap' :: (ToXKeyEvent a, ToXKeyEvent b) => a -> b -> Binding ActiveWindow XKeyEvent
     remap' = remap x11
@@ -72,29 +72,27 @@ normalBinding x11 = whenFront condFF ff
       where
         rev ps _ _ = justBefore $ TIO.putStr ( "(Prefix: " <> (intercalate "," $ fmap describe ps) <> ") " )
     revInput () _ i = justAfter $ TIO.putStrLn ("Input " <> describe i)
-    ff = revise revInput $ mconcat
-         [ remap' (ctrl xK_n) (xK_Down),
-           remap' (ctrl xK_p) (xK_Up),
-           remap' (ctrl xK_f) (xK_Right),
-           
-           remapR' (ctrl xK_m) (xK_Return),
-           
-           remapR' (ctrl xK_g) (xK_Escape),
-           
-           fromSeq' $ withCancel [ctrl xK_g]
-           $ mconcat [ toSeq' [ctrl xK_z] z_ff,
-                       toSeq' [ctrl xK_x] x_ff,
-                       toSeq' [ctrl xK_c] c_ff
-                     ]
-         ]
-    z_ff = mconcat [ remap' (ctrl xK_n) (ctrl xK_Tab),
-                     remap' (ctrl xK_p) (shift $ ctrl xK_Tab),
-                     remap' (ctrl xK_c) (ctrl xK_t),
-                     remap' (ctrl xK_k) (ctrl xK_w)
-                   ]
-    x_ff = mconcat [ remap' (ctrl xK_f) (ctrl xK_o),
-                     remap' (ctrl xK_s) (ctrl xK_s)
-                   ]
-    c_ff = mconcat [ remap' (xK_u) (ctrl $ shift xK_T)
-                   ]
+    binding = revise revInput $ mconcat
+              [ remap' (ctrl xK_n) (xK_Down),
+                remap' (ctrl xK_p) (xK_Up),
+                remap' (ctrl xK_f) (xK_Right),
+                
+                remapR' (ctrl xK_m) (xK_Return),
+                
+                remapR' (ctrl xK_g) (xK_Escape),
+                
+                fromSeq' $ withCancel [ctrl xK_g]
+                $ mconcat [ toSeq' [ctrl xK_z] z_binding,
+                            toSeq' [ctrl xK_x] x_binding
+                          ]
+              ]
+    z_binding = mconcat [ remap' (ctrl xK_n) (ctrl xK_Page_Down),
+                          remap' (ctrl xK_p) (ctrl xK_Page_Up),
+                          remap' (ctrl xK_c) (ctrl xK_t),
+                          remap' (ctrl xK_k) (ctrl xK_w),
+                          remap' (ctrl xK_slash) (shift $ ctrl xK_T)
+                        ]
+    x_binding = mconcat [ remap' (ctrl xK_f) (ctrl xK_o),
+                          remap' (ctrl xK_s) (press xK_slash)
+                        ]
 
