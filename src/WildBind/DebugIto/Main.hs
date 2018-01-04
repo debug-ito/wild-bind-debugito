@@ -70,8 +70,10 @@ normalBinding x11 = whenFront condVivaldi binding
     toSeq' ps = withPrefix ps . toSeq
     fromSeq' = fromSeq . reviseSeq rev
       where
-        rev ps _ _ = justBefore $ TIO.putStr ( "(Prefix: " <> (intercalate "," $ fmap describe ps) <> ") " )
-    revInput () _ i = justAfter $ TIO.putStrLn ("Input " <> describe i)
+        -- rev ps _ _ = justBefore $ TIO.putStr ( "(Prefix: " <> (intercalate "," $ fmap describe ps) <> ") " )
+        rev _ _ _ = Just
+    -- revInput () _ i = justAfter $ TIO.putStrLn ("Input " <> describe i)
+    revInput _ _ _ = Just
     binding = revise revInput $ mconcat
               [ remap' (ctrl xK_n) (xK_Down),
                 remap' (ctrl xK_p) (xK_Up),
