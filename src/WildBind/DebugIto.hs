@@ -14,6 +14,7 @@ module WildBind.DebugIto
          base,
          -- * Global
          GlobalConfig(..),
+         xfceGlobalConfig,
          global,
          -- * Video players
          VideoPlayerConfig(..),
@@ -79,20 +80,33 @@ data GlobalConfig =
   GlobalConfig
   { globalMaximize :: ReaderT ActiveWindow IO (),
     -- ^ action to maximize the active window.
-    globalMenu :: ReaderT ActiveWindow IO ()
+    globalMenu :: ReaderT ActiveWindow IO (),
     -- ^ action to open the menu window.
+    globalClose :: ReaderT ActiveWindow IO ()
+    -- ^ action to close the current window
   }
 
+xfceGlobalConfig :: X11Front i
+                 -> String -- ^ path to the menu directory.
+                 -> GlobalConfig
+xfceGlobalConfig x11 menu_dir =
+  GlobalConfig
+  { globalMaximize = pushTo x11 rwin (alt xK_F7),
+    globalMenu = cmd' ("Thunar " <> menu_dir),
+    globalClose = pushTo x11 rwin (alt xK_F4)
+  }
+  where
+    rwin = defaultRootWindow x11
+
 -- | Binding that should be globally active
-global :: X11Front i -> GlobalConfig -> Binding ActiveWindow NumPadUnlocked
-global x11 conf = global_nostate <> global_non_switcher where
+global :: GlobalConfig -> Binding ActiveWindow NumPadUnlocked
+global conf = global_nostate <> global_non_switcher where
   global_nostate = bindsF $ do
-    on NumMinus `as` "Close" `run` pushTo x11 rwin (alt xK_F4)
+    on NumMinus `as` "Close" `run` globalClose conf
     on NumPlus `as` "Maximize" `run` globalMaximize conf
     on NumMulti `as` "Menu" `run` globalMenu conf
   global_non_switcher = whenFront (\w -> winInstance w /= "boring-window-switcher") $ binds $ do
     on NumEnter `as` "Switch" `run` cmd' "boring-window-switcher"
-  rwin = defaultRootWindow x11
 
 
 data VideoPlayerConfig =
