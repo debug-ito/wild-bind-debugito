@@ -75,12 +75,9 @@ normalBinding x11 = whenFront condVivaldi binding
     binding = revise revInput $ mconcat
               [ remap' (ctrl xK_n) (xK_Down),
                 remap' (ctrl xK_p) (xK_Up),
-                remap' (ctrl xK_f) (xK_Right),
-                
+                remap' (ctrl xK_s) (press xK_slash),
                 remapR' (ctrl xK_m) (xK_Return),
-                
                 remapR' (ctrl xK_g) (xK_Escape),
-                
                 fromSeq' $ withCancel [ctrl xK_g]
                 $ mconcat [ toSeq' [ctrl xK_z] z_binding,
                             toSeq' [ctrl xK_x] x_binding
@@ -93,6 +90,6 @@ normalBinding x11 = whenFront condVivaldi binding
                           remap' (ctrl xK_slash) (shift $ ctrl xK_T)
                         ]
     x_binding = mconcat [ remap' (ctrl xK_f) (ctrl xK_o),
-                          remap' (ctrl xK_s) (press xK_slash)
+                          remap' (ctrl xK_s) (ctrl xK_s)
                         ]
 
