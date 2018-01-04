@@ -10,6 +10,8 @@ module WildBind.DebugIto
          push,
          pushes,
          cmd',
+         -- * Combined execution
+         execEitherWildBind,
          -- * Simple Binding
          base,
          -- * Global
@@ -35,7 +37,9 @@ module WildBind.DebugIto
          defVivaldiConfig,
          webBrowser,
          firefox,
-         vivaldi
+         vivaldi,
+         -- * Keyboard bindings
+         vivaldiKey
        ) where
 
 import Control.Monad (void, forM_)
@@ -45,21 +49,31 @@ import qualified Control.Monad.State as State
 import Data.Monoid ((<>), mempty)
 import Data.Text (Text, isInfixOf, isSuffixOf, unpack)
 import System.Process (callCommand, spawnCommand)
-import WildBind.Input.NumPad (NumPadUnlocked(..))
-import WildBind.Binding
+import WildBind.Input.NumPad (NumPadUnlocked(..), NumPadLocked(NumLDivide))
+import WildBind.Indicator
+  ( withNumPadIndicator, wildBindWithIndicator,
+    adaptIndicator, toggleBinding
+  )
+import WildBind
   ( Binding, Binding',
     binds, on, as, run,
-    whenFront,
+    whenFront, convInput,
     startFrom, ifBack, binds', extend,
-    advice, before, after,
-    bindsF, bindsF'
+    advice, before, after, revise,
+    bindsF, bindsF',
+    FrontEnd
+  )
+import WildBind.Seq
+  ( toSeq, withPrefix, withCancel, fromSeq,
+    reviseSeq
   )
 import WildBind.X11
   ( winClass, winInstance, winName, ActiveWindow, Window,
-    ToXKeyEvent, X11Front, defaultRootWindow,
+    defaultRootWindow,
+    ToXKeyEvent, X11Front, XKeyEvent,
     alt, ctrl, shift, press
   )
-import WildBind.X11.Emulate (push, pushTo)
+import WildBind.X11.Emulate (push, pushTo, remap, remapR)
 import WildBind.X11.KeySym
 
 -- | Push a sequence of keys
@@ -75,6 +89,15 @@ base :: X11Front i -> Binding ActiveWindow NumPadUnlocked
 base x11 = bindsF $ do
   on NumCenter `as` "Enter" `run` push x11 xK_Return
 
+execEitherWildBind :: Binding s NumPadUnlocked
+                   -> Binding s XKeyEvent
+                   -> FrontEnd s (Either NumPadUnlocked XKeyEvent)
+                   -> IO ()
+execEitherWildBind num_binding key_binding front = withNumPadIndicator $ \ind -> do
+  let binding = convInput Left num_binding' <> convInput Right key_binding
+      num_binding' = num_binding <> toggleBinding ind NumLDivide
+      ind' = adaptIndicator Left (either Just (const Nothing)) ind
+  wildBindWithIndicator ind' binding front
 
 data GlobalConfig =
   GlobalConfig
@@ -360,4 +383,43 @@ webBrowser x11 conf = impl where
       advice (after $ State.put WBBase) $ do
         on NumCenter `as` "Select (new tab)" `run` push' (ctrl xK_Return)
         on NumHome `as` "Select (cur tab)" `run` push' xK_Return
+
+
+vivaldiKey :: X11Front i -> Binding ActiveWindow XKeyEvent
+vivaldiKey x11 = whenFront condVivaldi binding
+                 <> whenFront condXev binding -- for testing.
+  where
+    condVivaldi w = winClass w == "Vivaldi-stable"
+    condXev w = winName w == "Event Tester"
+    remap' :: (ToXKeyEvent a, ToXKeyEvent b) => a -> b -> Binding ActiveWindow XKeyEvent
+    remap' = remap x11
+    remapR' :: (ToXKeyEvent a, ToXKeyEvent b) => a -> b -> Binding ActiveWindow XKeyEvent
+    remapR' = remapR x11
+    toSeq' ps = withPrefix ps . toSeq
+    fromSeq' = fromSeq . reviseSeq rev
+      where
+        -- rev ps _ _ = justBefore $ TIO.putStr ( "(Prefix: " <> (intercalate "," $ fmap describe ps) <> ") " )
+        rev _ _ _ = Just
+    -- revInput () _ i = justAfter $ TIO.putStrLn ("Input " <> describe i)
+    revInput _ _ _ = Just
+    binding = revise revInput $ mconcat
+              [ remap' (ctrl xK_n) (xK_Down),
+                remap' (ctrl xK_p) (xK_Up),
+                remap' (ctrl xK_s) (press xK_slash),
+                remapR' (ctrl xK_m) (xK_Return),
+                remapR' (ctrl xK_g) (xK_Escape),
+                fromSeq' $ withCancel [ctrl xK_g]
+                $ mconcat [ toSeq' [ctrl xK_z] z_binding,
+                            toSeq' [ctrl xK_x] x_binding
+                          ]
+              ]
+    z_binding = mconcat [ remap' (ctrl xK_n) (ctrl xK_Page_Down),
+                          remap' (ctrl xK_p) (ctrl xK_Page_Up),
+                          remap' (ctrl xK_c) (ctrl xK_t),
+                          remap' (ctrl xK_k) (ctrl xK_w),
+                          remap' (ctrl xK_slash) (shift $ ctrl xK_T)
+                        ]
+    x_binding = mconcat [ remap' (ctrl xK_f) (ctrl xK_o),
+                          remap' (ctrl xK_s) (ctrl xK_s)
+                        ]
 
