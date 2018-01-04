@@ -19,13 +19,15 @@ library
   ghc-options:          -Wall -fno-warn-unused-imports
   default-extensions:   OverloadedStrings
   other-extensions:     FlexibleContexts, PartialTypeSignatures
-  exposed-modules:      WildBind.DebugIto
+  exposed-modules:      WildBind.DebugIto,
+                        WildBind.DebugIto.Main
   -- other-modules:        
   build-depends:        base,
                         process,
                         mtl,
                         wild-bind,
                         wild-bind-x11,
+                        wild-bind-indicator,
                         text
 
 executable wild-bind-debugito
@@ -36,9 +38,8 @@ executable wild-bind-debugito
   -- other-modules:        
   -- default-extensions:   
   -- other-extensions:     
-  build-depends:        base, wild-bind-debugito,
-                        wild-bind, wild-bind-x11, text,
-                        wild-bind-indicator
+  build-depends:        base, wild-bind-debugito
+                        
 
 -- test-suite spec
 --   type:                 exitcode-stdio-1.0
