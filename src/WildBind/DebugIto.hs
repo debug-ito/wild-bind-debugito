@@ -413,7 +413,8 @@ vivaldiKey x11 = whenFront condVivaldi binding
                 fromSeq' $ withCancel [ctrl xK_g] seq_binding
               ]
     seq_binding = mconcat [ withPrefix [ctrl xK_z] $ toSeq z_binding,
-                            withPrefix [ctrl xK_x] $ toSeq x_binding
+                            withPrefix [ctrl xK_x] $ toSeq x_binding,
+                            withPrefix [ctrl xK_q] $ toSeq q_binding
                           ]
     z_binding = mconcat [ remap'' (ctrl xK_n) (ctrl xK_Page_Down),
                           remap'' (ctrl xK_p) (ctrl xK_Page_Up),
@@ -423,5 +424,7 @@ vivaldiKey x11 = whenFront condVivaldi binding
                         ]
     x_binding = mconcat [ remap'' (ctrl xK_f) (ctrl xK_o),
                           remap'' (ctrl xK_s) (ctrl xK_s)
+                        ]
+    q_binding = mconcat [ remap'' (ctrl xK_a) (ctrl xK_slash)
                         ]
 
