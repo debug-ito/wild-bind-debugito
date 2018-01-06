@@ -419,7 +419,7 @@ vivaldiKey x11 = whenFront condVivaldi binding
     z_binding = mconcat [ remap'' (ctrl xK_n) (ctrl xK_Page_Down),
                           remap'' (ctrl xK_p) (ctrl xK_Page_Up),
                           remap'' (ctrl xK_c) (ctrl xK_t),
-                          remap'' (ctrl xK_k) (ctrl xK_w),
+                          remap'' (ctrl xK_k) (ctrl xK_F4),
                           remap'' (ctrl xK_slash) (shift $ ctrl xK_T)
                         ]
     x_binding = mconcat [ remap'' (ctrl xK_f) (ctrl xK_o),
