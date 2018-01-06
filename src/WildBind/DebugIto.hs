@@ -252,7 +252,8 @@ data WebBrowserConfig =
   WebBrowserConfig
   { wbCancel,
     wbLeftTab, wbRightTab, wbCloseTab,
-    wbToggleBookmarks,
+    wbOpenBookmarks,
+    wbCloseBookmarks,
     wbLink, wbLinkNewTab, wbLinkFinish,
     wbReload,
     wbBack, wbForward, wbHome,
@@ -268,7 +269,8 @@ defFirefoxConfig x11 =
     wbLeftTab = push' (shift $ ctrl xK_Tab),
     wbRightTab = push' (ctrl xK_Tab),
     wbCloseTab = pushes' [ctrl xK_q, ctrl xK_w],
-    wbToggleBookmarks = pushes' [ctrl xK_q, ctrl xK_b],
+    wbOpenBookmarks = toggleBookmarks,
+    wbCloseBookmarks = toggleBookmarks,
     wbLink = pushes' [ctrl xK_u, press xK_e],
     wbLinkNewTab = pushes' [ctrl xK_u, shift xK_E],
     wbLinkFinish = push' xK_Return,
@@ -286,6 +288,7 @@ defFirefoxConfig x11 =
     push' :: (ToXKeyEvent k, _) => k -> _
     push' = push x11
     pushes' = pushes x11
+    toggleBookmarks = pushes' [ctrl xK_q, ctrl xK_b]
 
 defVivaldiConfig :: X11Front i -> WebBrowserConfig
 defVivaldiConfig x11 =
@@ -294,7 +297,8 @@ defVivaldiConfig x11 =
     wbLeftTab = push' (ctrl xK_Page_Up),
     wbRightTab = push' (ctrl xK_Page_Down),
     wbCloseTab = push' (ctrl xK_w),
-    wbToggleBookmarks = push' xK_F6,
+    wbOpenBookmarks = push' xK_F6,
+    wbCloseBookmarks = push' xK_F4,
     wbLink = pushes x11 [xK_asciicircum, xK_f],
     wbLinkNewTab = pushes x11 [press xK_asciicircum, shift xK_C],
     wbLinkFinish = return (),
@@ -345,7 +349,7 @@ webBrowser x11 conf = impl where
     on NumEnd `as` "Close tab" `run` act wbCloseTab
     on NumInsert `as` "Bookmark" `run` do
       State.put WBBookmark
-      act wbToggleBookmarks
+      act wbOpenBookmarks
     on NumCenter `as` "Link" `run` do
       State.put WBLink
       act wbLink
@@ -378,7 +382,7 @@ webBrowser x11 conf = impl where
     on NumRight `as` "6" `run` push' xK_6
   binds_bookmark = bindsF' $ do
     on NumEnd `as` "Tab" `run` push' xK_Tab
-    advice (after $ act wbToggleBookmarks) $ do
+    advice (after $ act wbCloseBookmarks) $ do
       forM_ [NumInsert, NumDelete] $ \k -> on k cancel_act
       advice (after $ State.put WBBase) $ do
         on NumCenter `as` "Select (new tab)" `run` push' (ctrl xK_Return)
