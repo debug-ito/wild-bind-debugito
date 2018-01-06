@@ -408,6 +408,22 @@ vivaldiKey x11 = whenFront condVivaldi binding
               [ remap' (ctrl xK_n) (xK_Down),
                 remap' (ctrl xK_p) (xK_Up),
                 remap' (ctrl xK_s) (xK_slash),
+                remap' (ctrl xK_v) (xK_Page_Down),
+                -- ^ C-v should be handled by Gtk+ 3 setting (as "Page
+                -- down"), but we remap it here. This is because in
+                -- some cases C-v triggers "Paste" operation.
+                --
+                -- If the cursor is already the end of the buffer, it
+                -- seems that the C-v event propagates to a different
+                -- entity (maybe Chromium's built-in mechanism?), and
+                -- that entity seems to trigger "Paste" operation. To
+                -- avoid that, we remap C-v here.
+                --
+                -- See also:
+                -- https://forum.vivaldi.net/topic/5512/bug-report-ctrl-shift-v-produces-double-paste
+                -- https://www.ghacks.net/2017/02/07/vivaldi-tip-block-all-keyboard-shortcuts/
+                remap' (alt xK_v) (xK_Page_Up),
+                -- ^ for symmetry, we remap M-v, too.
                 remapR' (ctrl xK_m) (xK_Return),
                 remapR' (ctrl xK_g) (xK_Escape),
                 fromSeq' $ withCancel [ctrl xK_g] seq_binding
