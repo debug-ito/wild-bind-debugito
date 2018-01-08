@@ -441,6 +441,7 @@ vivaldiKey x11 = whenFront condVivaldi binding
     x_binding = mconcat [ remap'' (ctrl xK_f) (ctrl xK_o),
                           remap'' (ctrl xK_s) (ctrl xK_s)
                         ]
-    q_binding = mconcat [ remap'' (ctrl xK_a) (ctrl xK_slash)
+    q_binding = mconcat [ remap'' (ctrl xK_a) (ctrl xK_slash),
+                          remap'' (ctrl xK_v) (ctrl xK_v)
                         ]
 
