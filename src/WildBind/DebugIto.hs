@@ -424,7 +424,7 @@ vivaldiKey x11 = whenFront condVivaldi binding
                 -- https://www.ghacks.net/2017/02/07/vivaldi-tip-block-all-keyboard-shortcuts/
                 remap' (alt xK_v) (xK_Page_Up),
                 -- ^ for symmetry, we remap M-v, too.
-                remapR' (ctrl xK_m) (xK_Return),
+                remap' (ctrl xK_m) (xK_Return),
                 remapR' (ctrl xK_g) (xK_Escape),
                 fromSeq' $ withCancel [ctrl xK_g] seq_binding
               ]
