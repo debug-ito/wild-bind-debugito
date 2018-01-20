@@ -395,6 +395,7 @@ vivaldiKey x11 = whenFront condVivaldi binding
   where
     condVivaldi w = winClass w == "Vivaldi-stable"
     condXev w = winName w == "Event Tester"
+    push' = push x11
     remap' = remap x11
     remap'' = remap x11
     remapR' = remapR x11
@@ -438,9 +439,11 @@ vivaldiKey x11 = whenFront condVivaldi binding
                           ]
     z_binding = mconcat [ remap'' (ctrl xK_n) (ctrl xK_Page_Down),
                           remap'' (ctrl xK_p) (ctrl xK_Page_Up),
-                          remap'' (ctrl xK_c) (ctrl xK_t),
+                          -- remap'' (ctrl xK_c) (ctrl xK_t),
                           remap'' (ctrl xK_k) (ctrl xK_F4),
-                          remap'' (ctrl xK_slash) (shift $ ctrl xK_T)
+                          remap'' (ctrl xK_slash) (shift $ ctrl xK_T),
+                          bindsF $ do
+                            on (ctrl xK_c) `run` (push' (ctrl xK_9) >> push' (ctrl xK_t))
                         ]
     x_binding = mconcat [ remap'' (ctrl xK_f) (ctrl xK_o),
                           remap'' (ctrl xK_s) (ctrl xK_s)
