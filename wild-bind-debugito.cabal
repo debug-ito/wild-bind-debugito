@@ -27,7 +27,7 @@ library
                         mtl,
                         wild-bind >=0.1.1.0 && <0.2,
                         wild-bind-x11 >=0.2.0.0 && <0.3,
-                        wild-bind-indicator >=0.2.0.0 && <0.3,
+                        wild-bind-indicator >=0.2.0.0 && <1.1,
                         text
 
 executable wild-bind-debugito
